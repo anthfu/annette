@@ -1,4 +1,5 @@
 (ns annette.server
+  (:require [com.brunobonacci.mulog :as u])
   (:import (io.netty.bootstrap ServerBootstrap)
            (io.netty.buffer Unpooled)
            (io.netty.channel ChannelInitializer)
@@ -9,17 +10,20 @@
 (defn echo-server-handler []
   (proxy [ChannelInboundHandlerAdapter] []
     (channelRead [ctx msg]
+      (u/log ::channel-read)
       (.write ctx msg))
     (channelReadComplete [ctx]
+      (u/log ::channel-read-complete)
       (-> ctx
           (.writeAndFlush Unpooled/EMPTY_BUFFER)
           (.addListener ChannelFutureListener/CLOSE)))
     (exceptionCaught [ctx e]
-      (.printStackTrace e)
+      (u/log ::channel-active :error (.getMessage e))
       (.close ctx))))
 
 (defn start
   [port]
+  (u/log ::server-init)
   (let [master-group (NioEventLoopGroup.)
         worker-group (NioEventLoopGroup.)]
     (try
@@ -42,8 +46,10 @@
               (.closeFuture)
               (.sync))))
       (finally
+        (u/log ::server-shutdown)
         (.shutdownGracefully worker-group)
         (.shutdownGracefully master-group)))))
 
 (defn -main [& _args]
+  (u/start-publisher! {:type :console})
   (start 8080))
