@@ -46,4 +46,5 @@
               (.closeFuture)
               (.sync))))
       (finally
+        (u/log ::client-shutdown)
         (.shutdownGracefully worker-group)))))
