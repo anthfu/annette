@@ -5,13 +5,14 @@
            (io.netty.channel ChannelInitializer)
            (io.netty.channel ChannelFutureListener ChannelInboundHandlerAdapter ChannelOption)
            (io.netty.channel.nio NioEventLoopGroup)
-           (io.netty.channel.socket.nio NioServerSocketChannel)))
+           (io.netty.channel.socket.nio NioServerSocketChannel)
+           (io.netty.util CharsetUtil)))
 
 (defn echo-server-handler []
   (proxy [ChannelInboundHandlerAdapter] []
-    (channelRead [ctx msg]
-      (u/log ::channel-read)
-      (.write ctx msg))
+    (channelRead [ctx in]
+      (u/log ::channel-read :message (.toString in CharsetUtil/UTF_8))
+      (.write ctx in))
     (channelReadComplete [ctx]
       (u/log ::channel-read-complete)
       (-> ctx
@@ -23,6 +24,7 @@
 
 (defn start
   [port]
+  (u/start-publisher! {:type :console})
   (u/log ::server-init)
   (let [master-group (NioEventLoopGroup.)
         worker-group (NioEventLoopGroup.)]
@@ -51,5 +53,4 @@
         (.shutdownGracefully master-group)))))
 
 (defn -main [& _args]
-  (u/start-publisher! {:type :console})
   (start 8080))

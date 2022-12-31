@@ -8,20 +8,23 @@
            (io.netty.util CharsetUtil)))
 
 (defn echo-client-handler
-  []
+  [text]
   (proxy [SimpleChannelInboundHandler] []
     (channelActive [ctx]
-      (let [msg (Unpooled/copiedBuffer "Hello world!" CharsetUtil/UTF_8)]
+      (let [msg (Unpooled/copiedBuffer text CharsetUtil/UTF_8)]
         (u/log ::channel-active)
         (.writeAndFlush ctx msg)))
     (channelRead0 [_ctx in]
-      (u/log ::channel-read0 :message (.toString in CharsetUtil/UTF_8)))
+      (let [msg (.toString in CharsetUtil/UTF_8)]
+        (u/log ::channel-read0 :message msg)
+        (println msg)))
     (exceptionCaught [ctx e]
       (u/log ::channel-active :error (.getMessage e))
       (.close ctx))))
 
-(defn run
-  [host port]
+(defn echo
+  [host port text]
+  (u/start-publisher! {:type :console})
   (u/log ::client-init)
   (let [worker-group (NioEventLoopGroup.)]
     (try
@@ -34,7 +37,7 @@
               (proxy [ChannelInitializer] []
                 (initChannel [ch] (-> ch
                                       (.pipeline)
-                                      (.addLast (echo-client-handler)))))))
+                                      (.addLast (echo-client-handler text)))))))
         (let [f (-> b
                     (.connect host port)
                     (.sync))]
@@ -44,7 +47,3 @@
               (.sync))))
       (finally
         (.shutdownGracefully worker-group)))))
-
-(defn -main [& _args]
-  (u/start-publisher! {:type :console})
-  (run "localhost" 8080))
