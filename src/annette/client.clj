@@ -28,23 +28,23 @@
   (u/log ::client-init)
   (let [worker-group (NioEventLoopGroup.)]
     (try
-      (let [b (Bootstrap.)]
-        (-> b
-            (.group worker-group)
-            (.channel NioSocketChannel)
-            (.option ChannelOption/SO_KEEPALIVE true)
-            (.handler
-              (proxy [ChannelInitializer] []
-                (initChannel [ch] (-> ch
-                                      (.pipeline)
-                                      (.addLast (echo-client-handler text)))))))
-        (let [f (-> b
+      (let [bootstrap (-> (Bootstrap.)
+                          (.group worker-group)
+                          (.channel NioSocketChannel)
+                          (.option ChannelOption/SO_KEEPALIVE true)
+                          (.handler
+                            (proxy [ChannelInitializer] []
+                              (initChannel [ch]
+                                (-> ch
+                                    (.pipeline)
+                                    (.addLast (echo-client-handler text)))))))
+            fut (-> bootstrap
                     (.connect host port)
                     (.sync))]
-          (-> f
-              (.channel)
-              (.closeFuture)
-              (.sync))))
+        (-> fut
+            (.channel)
+            (.closeFuture)
+            (.sync)))
       (finally
         (u/log ::client-shutdown)
         (.shutdownGracefully worker-group)))))

@@ -29,24 +29,24 @@
   (let [master-group (NioEventLoopGroup.)
         worker-group (NioEventLoopGroup.)]
     (try
-      (let [b (ServerBootstrap.)]
-        (-> b
-            (.group master-group worker-group)
-            (.channel NioServerSocketChannel)
-            (.childHandler
-              (proxy [ChannelInitializer] []
-                (initChannel [ch] (-> ch
-                                      (.pipeline)
-                                      (.addLast (echo-server-handler))))))
-            (.option ChannelOption/SO_BACKLOG (int 128))
-            (.childOption ChannelOption/SO_KEEPALIVE true))
-        (let [f (-> b
+      (let [bootstrap (-> (ServerBootstrap.)
+                          (.group master-group worker-group)
+                          (.channel NioServerSocketChannel)
+                          (.childHandler
+                            (proxy [ChannelInitializer] []
+                              (initChannel [ch]
+                                (-> ch
+                                    (.pipeline)
+                                    (.addLast (echo-server-handler))))))
+                          (.option ChannelOption/SO_BACKLOG (int 128))
+                          (.childOption ChannelOption/SO_KEEPALIVE true))
+            fut (-> bootstrap
                     (.bind port)
                     (.sync))]
-          (-> f
-              (.channel)
-              (.closeFuture)
-              (.sync))))
+        (-> fut
+            (.channel)
+            (.closeFuture)
+            (.sync)))
       (finally
         (u/log ::server-shutdown)
         (.shutdownGracefully worker-group)
