@@ -11,7 +11,7 @@
   [text]
   (proxy [SimpleChannelInboundHandler] []
     (channelActive [ctx]
-      (let [msg (Unpooled/copiedBuffer text CharsetUtil/UTF_8)]
+      (let [msg (Unpooled/copiedBuffer ^String text CharsetUtil/UTF_8)]
         (u/log ::channel-active)
         (.writeAndFlush ctx msg)))
     (channelRead0 [_ctx in]
@@ -28,23 +28,25 @@
   (u/log ::client-init)
   (let [worker-group (NioEventLoopGroup.)]
     (try
-      (let [bootstrap (-> (Bootstrap.)
-                          (.group worker-group)
-                          (.channel NioSocketChannel)
-                          (.option ChannelOption/SO_KEEPALIVE true)
-                          (.handler
-                            (proxy [ChannelInitializer] []
-                              (initChannel [ch]
-                                (-> ch
-                                    (.pipeline)
-                                    (.addLast (echo-client-handler text)))))))
-            fut (-> bootstrap
-                    (.connect host port)
-                    (.sync))]
-        (-> fut
+      (let [b (doto (Bootstrap.)
+                (.group worker-group)
+                (.channel NioSocketChannel)
+                (.option ChannelOption/SO_KEEPALIVE true)
+                (.handler
+                  (proxy [ChannelInitializer] []
+                    (initChannel [ch]
+                      (-> ch
+                          (.pipeline)
+                          (.addLast (echo-client-handler text)))))))]
+        (-> b
+            (.connect ^String host ^int port)
+            (.sync)
             (.channel)
             (.closeFuture)
             (.sync)))
       (finally
         (u/log ::client-shutdown)
         (.shutdownGracefully worker-group)))))
+
+(defn -main [& _args]
+  (echo "localhost" 8080 "Hello world!"))
